@@ -7,14 +7,21 @@
 
 import React, {useState} from 'react';
 import type {PropsWithChildren} from 'react';
-import {NavigationContainer, useNavigation} from '@react-navigation/native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import {
+  NavigationContainer,
+  useNavigation,
+  useLinkBuilder,
+  useTheme,
+} from '@react-navigation/native';
+import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import HomeScreen from './screens/HomeScreen';
 import DetailsScreen from './screens/DetailsScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import FeedScreen from './screens/FeedScreen';
 import MessagesScreen from './screens/MessagesScreen';
+import {PlatformPressable} from '@react-navigation/elements';
+// import { BlurView } from 'expo-blur';
 
 import {
   SafeAreaView,
@@ -46,6 +53,9 @@ import {
 type SectionProps = PropsWithChildren<{
   title: string;
 }>;
+
+const HomeIconActive = require('./img/car.png');
+const HomeIconNormal = require('./img/scan.png');
 
 function Section({children, title}: SectionProps): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
@@ -97,11 +107,11 @@ function HomeStack() {
           fontWeight: 'bold',
         },
       }}>
-      <Stack.Screen
+      {/* <Stack.Screen
         name="MyTab"
         component={MyTabs}
         options={{ headerShown: false }}
-      />
+      /> */}
       <Stack.Screen
         name="Home"
         component={HomeScreen}
@@ -140,11 +150,141 @@ function LogoTitle() {
   );
 }
 
+function MyTabBar({state, descriptors, navigation}) {
+  const {colors} = useTheme();
+  const {buildHref} = useLinkBuilder();
+
+  return (
+    <View style={{flexDirection: 'row'}}>
+      {state.routes.map((route, index) => {
+        const {options} = descriptors[route.key];
+        const label =
+          options.tabBarLabel !== undefined
+            ? options.tabBarLabel
+            : options.title !== undefined
+            ? options.title
+            : route.name;
+
+        const isFocused = state.index === index;
+
+        const onPress = () => {
+          const event = navigation.emit({
+            type: 'tabPress',
+            target: route.key,
+            canPreventDefault: true,
+          });
+
+          if (!isFocused && !event.defaultPrevented) {
+            navigation.navigate(route.name, route.params);
+          }
+        };
+
+        const onLongPress = () => {
+          navigation.emit({
+            type: 'tabLongPress',
+            target: route.key,
+          });
+        };
+
+        return (
+          <PlatformPressable
+            href={buildHref(route.name, route.params)}
+            accessibilityState={isFocused ? {selected: true} : {}}
+            accessibilityLabel={options.tabBarAccessibilityLabel}
+            testID={options.tabBarButtonTestID}
+            onPress={onPress}
+            onLongPress={onLongPress}
+            style={{flex: 1}}>
+            <Text style={{color: isFocused ? colors.primary : colors.text}}>
+              {label}
+            </Text>
+          </PlatformPressable>
+        );
+      })}
+    </View>
+  );
+}
+
+function IconWithBadge({icon, badgeCount, size}) {
+  return (
+    <View style={{width: 24, height: 24, margin: 5}}>
+      <Image
+        source={icon}
+        style={{
+          width: size,
+          height: size,
+        }}
+      />
+      {/* {badgeCount > 0 && (
+        <View
+          style={{
+            // On React Native < 0.57 overflow outside of parent will not work on Android, see https://git.io/fhLJ8
+            position: 'absolute',
+            right: -6,
+            top: -3,
+            backgroundColor: 'red',
+            borderRadius: 6,
+            width: 12,
+            height: 12,
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>
+            {badgeCount}
+          </Text>
+        </View>
+      )} */}
+    </View>
+  );
+}
+
+function HomeIconWithBadge(props) {
+  return <IconWithBadge {...props} badgeCount={3} />;
+}
+
 const RootTabs = createBottomTabNavigator();
 
 function Root() {
   return (
-    <RootTabs.Navigator screenOptions={{ headerShown: false }}>
+    <RootTabs.Navigator
+      screenOptions={({route}) => ({
+        tabBarIcon: ({focused, color, size}) => {
+          if (route.name === 'HomeTab') {
+            return (
+              <HomeIconWithBadge
+                icon={focused ? HomeIconActive : HomeIconNormal}
+                size={size}
+                color={color}
+              />
+            );
+          }
+        },
+        // tabBarLabel: ({focused: boolean, color: string}) => {
+        //   if (route.name === 'HomeTab') {
+        //     return (
+        //       <Text>666</Text>
+        //     );
+        //   }
+        // },
+        tabBarStyle: { position: 'absolution' },
+        // title: '123',
+        tabBarBadge: 3,
+        tabBarBadgeStyle: {
+          color: 'black',
+          backgroundColor: 'yellow',
+        },
+        tabBarHideOnKeyboard: true,
+        tabBarActiveTintColor: 'red',
+        tabBarInactiveTintColor: 'gray',
+        tabBarLabelStyle: {
+          fontSize: 24,
+          fontFamily: 'Georgia',
+          fontWeight: 600,
+        },
+        tabBarLabelPosition: 'beside-icon'
+      })}
+      >
       <RootTabs.Screen name="HomeTab" component={HomeStack} />
       <RootTabs.Screen name="MyTab" component={MyTabs} />
     </RootTabs.Navigator>
